@@ -1,0 +1,208 @@
+<DOCTYPE html>
+<html lang="en">
+  <head>
+   <meta charset="UTF-8">
+      <meta http-equiv="X-UA-Compatible" content="IE-edge">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head> 
+    <body>
+    <div class="paral">
+     
+
+        <p style="font-size: 21"><i>Figure 12: Parallel decomposition of DBSCAN</i></p>
+        <center>
+        <img style="width: 400px; height: 600px;" src="fig%2012.png">
+        
+        </center>
+        <P style="font-size: 19"><span>made the non-trivial hypothesis that all the Slaves can access the R*-tree structure
+            to perform their task.</span><br><br>
+The computation is clearly data-flow like, with queries and answers being the
+elementary tasks that flow across the modules. The structure described is plainly mapped
+to a set of skeleton reported in Figure 13 and Figure 14, where we find a pipe of the Master
+and Slave modules, with a set of Slave-independent modules contained in a farm. A loop
+skeleton is used to let the answers return to the Master until all clusters have been
+explored. The amount of computation in the Master module depends on the amount of
+points returned by the spatial queries, and we have modified their behavior by moving
+them to separate modules. The process of oblivious expansion of different parts of a
+cluster exploits parallelism in the Slave module, but may repeatedly generate the same
+candidates. While in sequential DBSCAN neighbor points are counted, and only
+unlabeled ones are selected as new candidates, now there is no label information to allow
+this kind of immediate pruning. But if we send all neighborhood sets for each query each
+time, we end up in receiving exponentially many results in the Master.<br>āā
+A simple filtering heuristics allows the Slaves to send each result once at most. The
+heuristic is reported in Figure 12 as a modified pseudo-code for a FilteringSlave module.</p><br><br>
+        
+    </div><br>
+<div class="paral">
+   
+    
+    
+    <p style="font-size: 21"><i>Figure 13: The SkIE code of parallel DBSCAN.</i></p>
+     <center>
+        <img style="width: 400px; height: 400px;" src="fig%2013.png">
+        
+        </center>   
+     <p style="font-size: 21"><i>Figure 14: Block structure of parallel DBSCAN.</i></p>   
+       <center>
+        <img style="width: 400px; height: 400px;" src="fig%2014.png">
+        
+        </center>
+    <P style="font-size: 19">Each sub-Slave can detect a sufficient condition for not resending points already queued
+as candidates, while still providing the Master with the exact number of neighbors
+discovered in each query ( | Setn| is this number), which is needed by the clustering
+algorithm. The effect of this distributed filtering is reported in Figure 15, where we can
+see that the ratio of duplicates to results is bounded by the degree of parallelism.<br>
+Like its sequential counterpart, the parallel structure we have described for DBSCAN
+is general with respect to the spatial index, and can be applied to different spatial data
+structures. It is thus easy to exploit any improvement or customization of the data
+management that may speed up the computation. Further investigation is needed to
+evaluate the practical scalability limits of our heuristics at higher degrees of parallelism,
+and possibly to devise better ones. To improve the filtering ratio, more informed
+heuristics could exploit non-local information gained by communications among the</p><br>
+       
+    </div>
+    <div class="paral">
+    
+        
+        <p style="font-size: 21"><i>Figure 15: Average number of points per query answer, versus parallelism and epsilon.</i></p>
+        <center>
+        <img style="width: 550px; height: 500px;" src="fig%2015.png">
+        </center>
+        <P style="font-size: 19">slaves, or between the Master and the Slave module. Another solution is to use a
+separate, parallel module to apply global filtering to the results returning to the Master.<br>
+A final comment must be made about the availability of the R*-tree to all the
+components of the Slave module. In our tests, the data structure was actually replicated,
+which is a consistent waste of disk space. This could be a limit for practical scalability,
+but the parallel algorithm does not actually need replication. Since the R*-tree is used
+as a read-only index structure, it can be shared among all the Slaves by means of a
+networked/parallel file system. The R*-tree is a secondary memory structure, so its
+access time is not subject to a sharp degradation. A single copy on a networked
+sequential file system would become a bottleneck if shared among a large number of
+Slaves. Sharing a single copy across a bounded number of processors could help reduce
+the amount of replication, and may be the only choice in a DDM setting. Using instead
+a parallel file system to store the data is not subject to the same limitations, and may
+actually increase the performance of the accesses, thanks to the fact that the size of
+parallel file system caches increases with the size of the employed parallel architecture.</p>
+<p style="font-size: 35"><i>Related Work</i></p>
+<P style="font-size: 19">We compare our approach with the PDBSCAN one described in Xu, Jager and
+Kriegel (1999). That work also addressed the issue of speeding up the region queries by
+means of parallel computation. They develop a Master-Slave scheme in which the Slaves
+independently run a slightly modified version of sequential DBSCAN on separate
+partitions of the multi-dimensional input space. The data are held in a distributed version
+of the R*-Tree, which partitions the data pages of the R*-Tree (the leaves) among</P><br>
+         
+        </div>
+        <div class="paral">
+        <p style="font-size: 19">available processors and fully replicates the index structure (the interior part of the tree).
+This approach relies on the same constraint we exploited, i.e., that the spatial structure
+is essentially read-only. Slaves have to communicate with each other to answer spatial
+queries near partition boundaries, so the distribution of data pages among processors
+is performed following a Hilbert space-filling curve, a commonplace tool to enhance
+locality for huge spatial data structures and problems. The Master module is idle during
+the parallel clustering phase, but the cluster identifiers assigned in distinct partitions are
+completely unrelated. A merging phase is run after the clustering to map local cluster IDs
+to global ones. Information collected at run time by the Slaves is used to match the
+different parts of clusters that span partition boundaries.</p>
+        <p style="font-size: 19">In the Master-Slave decomposition of PDBSCAN, the Master has little control on
+the first part of the computation, and there is no bottleneck, so the application shows a
+good speed up for a small number of processors. On the other hand, when increasing the
+degree of parallelism, the amount of communications among the Slaves raises quickly,
+and it is not clear how high could be the cost of the merging phase—an entirely sequential task of the Master processor.</p>
+        <p style="font-size: 19">PDBSCAN required the definition of an ad hoc distributed data structure, the dR*-
+Tree, and its implementation using a low-level approach (C++ and PVM). The dataset is
+carefully partitioned among the processors, and this is a strong assumption in a
+distributed computing environment. On the contrary, our solution does not rely on an
+exact partitioning of the data and is implemented in a high-level fashion reusing the code
+of the sequential application; it assumes that the data is accessible from every processor,
+at least in secondary memory. Both solutions seem to perform well on small clusters, with
+datasets larger than one hundred-thousand points. The distinction between the two
+approaches is partly apparent, anyway. As we have shown with parallel C4.5, special
+purpose distributed data structures can be easily integrated into high-level applications
+by encapsulating them into external objects, and this opportunity is certainly available
+also for the structured parallel DBSCAN. In our view this is the best way to make the most
+of the effort put in developing complex solutions.</p><br>
+            <p style="font-size: 35">Test Results</p><br>
+            <p style="font-size: 19">We have actually implemented the described parallel structures using SkIE, and
+several prototypes have been run on a range of different parallel architectures. We
+present some test results and we analyze them in terms of speed-up and efficiency.
+Results over different machines show the characteristics of performance portability of
+structured parallel applications. We used
+            <div><p style="font-size: 19">• Clusters of LINUX workstations on a LAN network;</div>
+            <div><p style="font-size: 19">• Beowulf clusters with dedicated Fast Ethernet;</div>
+<div><p style="font-size: 19">• Small SMP workstations; and</div>
+<div><p style="font-size: 19">• Parallel, distributed-memory machines, like the Meiko CS-2 and the Cray T3E.</div>
+<p style="font-size: 19">This is a quite heterogeneous set of parallel architectures. The different number of
+processors, their technology, the bandwidth and latency of the interconnection network
+result in variable communication/computation ratios for the same problem on different
+</p><br>
+
+        </div>
+    <div class="paral">
+
+     <p style="font-size: 21"><i>Figure 16: Apriori efficiency versus parallelism ( * = centralized I/O ).
+</i></p>
+    <center>
+        <img style="width: 550px; height: 500px;" src="fig%2016.png">
+        </center>
+    <p style="font-size: 19">hardware platforms. The T3E and recent LINUX workstations offer the highest raw CPU
+speed, but from the point of view of communication versus computation speed, the SMP
+and the distributed memory multiprocessors offer the highest figures. I/O bandwidth and
+scalability are crucial to DM applications, and the test platforms offer quite different
+performances, with the CS-2 and the cluster platforms exploiting a higher degree of I/O
+parallelism. We note that the T3E platform of our tests had a single RAID disk server,
+which is a bottleneck at high degree of parallelism. Moreover, slower processor architectures are less sensitive to the I/O speed gap.</p>
+    <p style="font-size: 19">The Partitioned Apriori has been tested on the full range of hardware platforms. Test
+results are reported and discussed in full in previous works. Now we just point out that
+the application exhibits high efficiency and it is scalable with the size of data. In Figure
+16, we see the efficiency on the CS-2 and a Beowulf cluster. The dataset is obtained with
+the most commonly used test set generator (see Agrawal et al., 1996), and tests with
+centralized (*) and distributed I/O are reported, with the latter ensuring higher performance. Figure 17 shows speed-up figures for a LINUX cluster at a higher computational
+load. The completion time on a T3E (Figure 18) evidences the bottleneck of a single disk
+server at higher degrees of parallelism. Here the I/O time dominates execution time, unless
+the computational load of the sequential algorithm is very high.</p>
+    <p style="font-size: 19">We obtained comparable results from the DBSCAN prototype. A common behavior
+of these two programs is a performance loss when the input is too small. We can explain
+this behavior in terms of the startup phase that the farm parallelism has to go through,
+when computing a stream of tasks, before reaching the steady state. For the Apriori
+prototype, small data files mean few partitions (we cannot make them small because of</p>
+   
+        </div> 
+    </body>
+    
+    </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</DOCTYPE>
